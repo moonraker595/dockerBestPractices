@@ -1,0 +1,15 @@
+metricbeat.modules:
+  - module: http
+    metricsets: ["json"]
+    period: 10s  # Adjust polling frequency as needed
+    hosts: ["http://fastapi-app:8000"]
+    namespace: "app_metrics"
+    path: "/metrics"
+    json.keys_under_root: true
+    json.add_error_key: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+
+setup.kibana:
+  host: "http://kibana:5601"
