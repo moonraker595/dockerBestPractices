@@ -31,20 +31,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Logstash for log ingestion and metric aggregation
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.10.2
-    container_name: logstash
-    ports:
-      - "5044:5044"         # Beats input
-      - "9600:9600"         # Logstash monitoring API
-    volumes:
-      - ./dependency_config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-    depends_on:
-      - elasticsearch
-    environment:
-      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
-
   # Kibana for visualization
   kibana:
     image: docker.elastic.co/kibana/kibana:8.10.2
@@ -69,29 +55,8 @@ services:
       - ./dependency_config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - logstash
     command: filebeat -e -strict.perms=false
     restart: unless-stopped
-
-
-  curl-setup:
-    image: curlimages/curl:latest
-    container_name: curl-setup
-    depends_on:
-      kibana:
-        condition: service_healthy
-    command: >
-      sh -c '
-        echo "Setting up index pattern" &&
-        sleep 10 &&
-        curl -X POST http://kibana:5601/api/saved_objects/index-pattern/app-logs \
-        -H "kbn-xsrf: true" \
-        -H "Content-Type: application/json" \
-        -d "{\"attributes\": {\"title\": \"app-logs*\", \"timeFieldName\": \"@timestamp\"}}"
-      '
-
-
 
   ###############################################################
   # The following services are part of the ICAT stack           #
