@@ -1,0 +1,7 @@
+# Production dependencies
+pydantic
+pydantic-settings
+fastapi
+python-icat
+uvicorn
+python-dotenv

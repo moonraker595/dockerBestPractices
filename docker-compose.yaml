@@ -1,0 +1,169 @@
+services:
+
+  fastapi-app:
+    container_name: fastapi-app
+    build:
+      target: production
+    depends_on:
+      icat_mariadb:
+        condition: service_healthy
+      testdata:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+
+  ###############################################################
+  # The following services are part of the ELK stack            #
+  ###############################################################
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9200" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Logstash for log ingestion and metric aggregation
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.2
+    container_name: logstash
+    ports:
+      - "5044:5044"         # Beats input
+      - "9600:9600"         # Logstash monitoring API
+    volumes:
+      - ./dependency_config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    depends_on:
+      - elasticsearch
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+
+  # Kibana for visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5601" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.10.2
+    user: root
+    volumes:
+      - ./dependency_config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - logstash
+    command: filebeat -e -strict.perms=false
+    restart: unless-stopped
+
+
+  curl-setup:
+    image: curlimages/curl:latest
+    container_name: curl-setup
+    depends_on:
+      kibana:
+        condition: service_healthy
+    command: >
+      sh -c '
+        echo "Setting up index pattern" &&
+        sleep 10 &&
+        curl -X POST http://kibana:5601/api/saved_objects/index-pattern/app-logs \
+        -H "kbn-xsrf: true" \
+        -H "Content-Type: application/json" \
+        -d "{\"attributes\": {\"title\": \"app-logs*\", \"timeFieldName\": \"@timestamp\"}}"
+      '
+
+
+
+  ###############################################################
+  # The following services are part of the ICAT stack           #
+  ###############################################################
+
+  # Database needed to store the test data
+  icat_mariadb:
+    restart: always
+    # note: the latest version does not support the SQL connector needed by icat
+    image: mariadb:10.10
+    container_name: icat_mariadb_container
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: pw
+      MARIADB_DATABASE: icatdb
+      MARIADB_USER: icatdbuser
+      MARIADB_PASSWORD: icatdbuserpw
+    # the health check will tell us when data is in the DB
+    healthcheck:
+      test: |
+        /usr/bin/mysql --user=$$MARIADB_USER \
+        --password=$$MARIADB_PASSWORD \
+        --execute "select * from icatdb.DATAFILEPARAMETER;"
+      interval: 10s
+      timeout: 2s
+      retries: 10
+
+  # The ICAT server, available at http://localhost:18181/icat/version
+  # The data can be browsed by using the icat-admin user interface at
+  # https://icatadmin.netlify.app/
+  # remember to go to version endpoint first and accept cert
+  icat_payara:
+    restart: always
+    image: harbor.stfc.ac.uk/icat/icat_5:latest
+    container_name: icat_payara_container
+    ports:
+      - "14747:4848" # payara port
+      - "18181:8181" # https port
+    volumes:
+      - type: bind
+        source: ./dependency_config/icat-post-boot-commands.asadmin
+        target: /config/post-boot-commands.asadmin
+    environment:
+      - POSTBOOT_COMMANDS=/config/post-boot-commands.asadmin
+    healthcheck:
+      test: curl --fail http://localhost:8080/icat/version || exit 1
+      interval: 10s
+      timeout: 2s
+      retries: 10
+
+  # The Auth service needed by ICAT,
+  # Available at https://localhost:28181/authn.simple/version/
+  auth_payara:
+    restart: unless-stopped
+    image: harbor.stfc.ac.uk/icat/icat_auth:latest
+    container_name: auth_payara_container
+    ports:
+      - "24747:4848"
+      - "28181:8181"
+    healthcheck:
+      test: curl --fail -k https://localhost:8181/authn.simple/version || exit 1
+      interval: 10s
+      timeout: 2s
+      retries: 10
+
+  # Fills up the icat db with a set of auto generated / known test data
+  # Based on script: https://github.com/ral-facilities/
+  # datagateway-api/blob/v6.2.0/util/icat_db_generator.py
+  testdata:
+    image: harbor.stfc.ac.uk/icat/icat_testdata:latest
+    container_name: testdata_container
+    depends_on:
+      icat_mariadb:
+        condition: service_healthy

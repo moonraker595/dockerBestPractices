@@ -1,0 +1,10 @@
+# Test dependencies (only installed in testing environments)
+pydantic
+pydantic-settings
+fastapi
+python-icat
+uvicorn
+python-dotenv
+pytest
+httpx
+pytest-env
