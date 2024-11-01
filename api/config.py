@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     """
 
     # used to connect to icat
+    version: str
     icat_url: str
     # used to authenticate the api against icat
     icat_authenticator_name: str
