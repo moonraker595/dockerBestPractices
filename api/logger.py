@@ -8,7 +8,6 @@ class JSONFormatter(logging.Formatter):
             "level": record.levelname,
             "message": record.getMessage(),
             "timestamp": self.formatTime(record),
-            "module": record.module,
             "app": "fastapi",
         }
         return json.dumps(log_record)
