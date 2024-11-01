@@ -1,15 +1,20 @@
 from api.logger import app_logger
 from fastapi import FastAPI
 from api.icat_queries import icatQueries
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response
+from api.config import settings
 
 app = FastAPI()
 app_logger.info("Application started")
-hit_counter = {"endpoint_hits": 0}
+
+# Define a global counter for endpoint hits
+endpoint_hits_counter = Counter('endpoint_hits', 'Count of hits on the /icat endpoint')
 
 
 @app.get("/icat/{username}")
 async def get_user(username: str):
-    hit_counter["endpoint_hits"] += 1
+    endpoint_hits_counter.inc()
     app_logger.info("Get user endpoint hit")
     # login to ICAT
     icatQueries.login()
@@ -19,5 +24,11 @@ async def get_user(username: str):
 
 
 @app.get("/metrics")
-def metrics():
-    return hit_counter
+async def metrics():
+    data = generate_latest()
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/version")
+async def version():
+    return {"version": settings.version}
