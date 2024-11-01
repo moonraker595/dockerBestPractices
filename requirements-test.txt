@@ -4,6 +4,8 @@ pydantic-settings
 fastapi
 python-icat
 uvicorn
+prometheus_client
+starlette
 python-dotenv
 pytest
 httpx

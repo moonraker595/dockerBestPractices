@@ -1,7 +1,9 @@
 # Production dependencies
 pydantic
 pydantic-settings
-fastapi
+fastapi~=0.115.4
 python-icat
 uvicorn
 python-dotenv
+prometheus_client
+starlette
