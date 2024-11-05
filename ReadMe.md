@@ -82,14 +82,14 @@ should return something like:
 
 - This does mean more work 😢, as you have to first get the tests running locally and then from within a container.
 
-- The video clip [here](./images/recording.mov) shows how, for example, we can go from running the application with production and test targets against a compose stack, to locally running the application for debugging and testing purposes.
-
-  
-
-## Configuration Management 
+- The video clip [here](./images/recording.mp4) shows how, for example, we can go from running the application with production and test targets against a compose stack, to locally running the application for debugging and testing purposes.
 
 
+## Configuration & Dependency Management
 
+- Should be done via `.env` files. In the cluster, config files won't live with the code and a thrid party tool (like [Vault](https://developer.hashicorp.com/vault/tutorials/getting-started/getting-started-intro)) will be responsible for injecting the environment variables into the container. The source code should still hold an example `env` files (or equivalent) to facilitate local development and testing.
+- Dependencies can be managed via a `requirements.txt` file or by a Poetry lock file; `pylock.toml`  The main reason for using a lock file is to be able to manage dependencies of dependencies. As Docker itself is a virtual environment it doesn't make sense to have a virtual environment inside a virtual environment. So `poetry.run` should not be used to start the app or run tests.
+- Likewise with Ansible.
 
 
 ## Health Check Endpoint
