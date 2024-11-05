@@ -4,31 +4,22 @@ This document provides best practices for developing applications targeted for d
 
 Kubernetes introduces specific requirements and considerations for application architecture, particularly in containerisation, configuration management, logging, monitoring, and security. These guidelines aim to streamline the development process, improve scalability, and reduce deployment issues.
 
-This document includes detailed guidance on:
-
-- **Containerisation Standards** – Structuring, building, and optimising container images.
-- **Configuration Management** – Managing environment variables, secrets, and configurations.
-- **Logging and Monitoring** – Enabling observability with standardised logging and metrics tools.
-- **Security Considerations** – Key security practices.
-- **Testing Strategies** – Techniques for testing an app within a container.
-
-Note: These are recommendations, not requirements. Not all applications require this set-up, but if the application is to be deployed in a K8s environment then building these recommendations into the application will help streamline deployment later on.
+> **Note:** These are recommendations, not requirements. Not all applications require this set-up, but if the application is to be deployed in a K8s environment then building these recommendations into the application will help streamline deployment later on.
 
 ## End goal
 
 As a developer, the end goal is to have an application which is tested in the CI, in a container and then pushed to [our Harbor repository](https://harbor.stfc.ac.uk/). This means that the image will be:
 
 - Tested from inside a container, like it is going to be ran
-  - Be able to have the necessary config passed to it at runtime
 - Be available in Harbor for deployment
 - Be available for other apps to use as a dependency, pulled from Harbor
 
 ## Example FastAPI Project
 
-The code snippets in this document are taken from [an example stack](https://github.com/moonraker595/dockerBestPractices) which returns the fictional icat user details given a username. 
+The code snippets in this document are taken from this repository, which returns the fictional icat user details given a username in the URL. 
 For example, after running `docker compose up`:
 
- http://127.0.0.1:8000/icat/Karen482
+Go to the following address in your browser: http://127.0.0.1:8000/icat/Karen482
 
 should return something like:
 
@@ -49,12 +40,12 @@ should return something like:
 
 ## Containerisation Standards
 
-- A single, multistage docker build process helps keep the images lean and allows one docker file for testing and production. In the example, a base, production, and test stages are defined. The type of stage that is run depends on the `target` set during the image build process.
+- A single, multistage docker build process helps keep the images lean and allows one docker file for testing and production. 
+- In the example, a `base`, `production`, and `test` stages are defined. The type of stage that is run depends on the `target` set in the compose file.
 
 ## Logging and metrics
 
-- A `/metrics` endpoint is needed for a service to poll and gather data. The example app uses the Prometheus python client to help collect metrics within the app, metricbeat is then set up to poll this endpoint and forward them to Elastic Search to persist the data, which can then be visualised in a dashboard in Kibana. 
-
+- A `/metrics` endpoint is needed for a service to poll and gather data. The example app uses the Prometheus python client to help collect metrics within the app, metricbeat is then set up to poll this endpoint and forward them to ElasticSearch to persist the data. These can then be visualised in a dashboard in Kibana. 
 
 > **Note:** Equally, a Prometheus server and Gafana dashboard could be set up to visualise metrics, but as a developer, you only need to make sure these are collected within the app and outputted via a /metrics endpoint. 
 
@@ -75,23 +66,25 @@ should return something like:
 
 ## Testing & Development
 
-- Test locally against a compose stack, as well as part of the compose stack. In most cases, the app can be developed/debugged/tested in an IDE against a local compose stack (with the app running locally and commented out in the compose file). It should also be run as part of the compose stack, proving it can:
+- Tests should be run locally against a compose stack, as well as part of the compose stack. In most cases, the app can be developed/debugged/tested in an IDE against a local compose stack (with the app running locally and commented out in the compose file). It should also be able to run as part of the compose stack, proving it can:
 
   - be tested from within a container which in turn proves it can...
-  - be able to communicate with other dependencies (for example, ICAT) from within a container.
+  - be able to communicate with other dependencies (in this example, ICAT) from within a container.
 
 - This does mean more work 😢, as you have to first get the tests running locally and then from within a container.
 
-- The video clip [here](./images/recording.mp4) shows how, for example, we can go from running the application with production and test targets against a compose stack, to locally running the application for debugging and testing purposes.
+- In most cases, switching between the full docker-compose stack and running the application locally usually means changing a few URLs. The video clip [here](./images/recording.mp4) shows how, for example, we can go from running the application with production and test targets against a compose stack to locally running the application for debugging and testing purposes.
 
 
 ## Configuration & Dependency Management
 
-- Should be done via `.env` files. In the cluster, config files won't live with the code and a thrid party tool (like [Vault](https://developer.hashicorp.com/vault/tutorials/getting-started/getting-started-intro)) will be responsible for injecting the environment variables into the container. The source code should still hold an example `env` files (or equivalent) to facilitate local development and testing.
-- Dependencies can be managed via a `requirements.txt` file or by a Poetry lock file; `pylock.toml`  The main reason for using a lock file is to be able to manage dependencies of dependencies. As Docker itself is a virtual environment it doesn't make sense to have a virtual environment inside a virtual environment. So `poetry.run` should not be used to start the app or run tests.
-- Likewise with Ansible.
+- Configuration should be passed in via `.env` files. In the cluster, the real config (and probably any secrets) will be passed in via a third-party tool (like [Vault](https://developer.hashicorp.com/vault/tutorials/getting-started/getting-started-intro)) which will be responsible for injecting the environment variables into the container. The source code should still hold an example `env` files (or equivalent) to facilitate local development and testing.
+- In most cases, dependencies can be managed by a simple requirements.txt.
+- Where the entire dependency tree needs to be managed through `poetry.lock` and `pyproject.toml` files, Poetry can be installed in the base stage to run `poetry install...`. 
+- As Docker itself is a virtual environment it doesn't make sense to have a virtual environment inside a virtual environment. So `poetry.run` should not be used to start the app or run tests.
+- Likewise with Ansible. Docker and K8s define how the app is run so Ansible isn't used with these technologies.
 
 
 ## Health Check Endpoint
 
-- K8s will need an endpoint to poll in order to determine whether the application is up or not. This should be a `/version` endpoint
+- K8s will need an endpoint to poll in order to determine whether the application is up or not. This should be a simple endpoint which returns a `200`, Like a `/version` endpoint or an empty `/healthz` endpoint.
