@@ -1,7 +1,7 @@
 # Production dependencies
 pydantic
 pydantic-settings
-fastapi~=0.115.4
+fastapi
 python-icat
 uvicorn
 python-dotenv
