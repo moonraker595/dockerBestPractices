@@ -1,3 +1,4 @@
+# Things you don't want copying into the container when building the image
 .venv/
 .git/
 .idea/
