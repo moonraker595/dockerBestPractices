@@ -1,12 +1,10 @@
 metricbeat.modules:
-  - module: http
-    metricsets: ["json"]
-    period: 10s  # Adjust polling frequency as needed
+  - module: prometheus
+    period: 10s
     hosts: ["http://fastapi-app:8000"]
-    namespace: "app_metrics"
-    path: "/metrics"
-    json.keys_under_root: true
-    json.add_error_key: true
+    metrics_path: /metrics
+    metrics_filters:
+      include: ["endpoint_hits_total"]
 
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
