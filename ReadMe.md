@@ -13,8 +13,8 @@ Kubernetes introduces specific requirements and considerations for application a
 As a developer, the end goal is to have an application which is tested in the CI, in a container and then pushed to [our Harbor repository](https://harbor.stfc.ac.uk/). This means that the image will be:
 
 - Tested from inside a container, like it is going to be ran
-- Be available in Harbor for deployment
-- Be available for other apps to use as a dependency, pulled from Harbor
+- Be available in Harbor for deployment into the K8s cluster
+- Be available  in Harbor for other apps to use as a dependency
 
 ## Example FastAPI Project
 
@@ -23,7 +23,7 @@ For example, after running `docker compose up`:
 
 Go to the following address in your browser: http://127.0.0.1:8000/icat/Karen482
 
-should return something like:
+It should return something like:
 
 ```json
 {
@@ -94,5 +94,40 @@ should return something like:
 ## CI Tests
 
 - The CI should be running the tests from within a container against the compose stack. In this example, the CI builds an image with the test target set, runs the tests and, if successful, builds and pushes a production image to Habour.
-- This can then be pulled in the compose file and used with the compose stack by using the Harbor URL instead of the dockerfile. This will allow other services to use this application in their docker compose file without having to pull the code.
-- In the example compose file, a build target can be specified or the image to pull from harbor, not both
+
+- This can then be pulled in the compose file and used with the compose stack by using the Harbor URL instead of the local dockerfile. 
+
+  - This will allow other services to use this application in their docker compose file without having to pull the code.
+
+- In the example compose file, a build target can be specified:
+
+  ```yaml
+    fastapi-app:
+      container_name: fastapi-app
+      # This will build from the local Dockerfile
+      build:
+        target: production # or test
+      depends_on:
+        icat_mariadb:
+          condition: service_healthy
+        testdata:
+          condition: service_completed_successfully
+      ports:
+        - "8000:8000"
+  ```
+
+  or the image to pull from harbor, but not both:
+
+  ```yaml
+  fastapi-app:
+    container_name: fastapi-app
+   # The following line will pull the prod image from harbor, built by the CI, instead of building it from local code
+    image: harbor.stfc.ac.uk/dseg/api:main 
+    depends_on:
+      icat_mariadb:
+        condition: service_healthy
+      testdata:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+  ```
