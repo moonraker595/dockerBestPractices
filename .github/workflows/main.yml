@@ -1,0 +1,31 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # or specify your deployment branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build and run ICAT Docker Compose stack
+        run: docker-compose up -d icat_mariadb icat_payara auth_payara testdata
+
+      # The last container to run in the compose stack is the one to fill up the db with test data.
+      # Once this has exited then we know we can run the tests, otherwise the tests are too quick
+      # to run and fail.
+      - name: Wait for container to fill DB and exit
+        run: |
+          sleep 150
+
+      # Build and run tests
+      - name: Build and Test
+        run: |
+          docker build --target test -t my-app:test .
+          docker run --network dockerBestPractices_default my-app:test

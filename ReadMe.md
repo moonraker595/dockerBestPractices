@@ -88,3 +88,8 @@ should return something like:
 ## Health Check Endpoint
 
 - K8s will need an endpoint to poll in order to determine whether the application is up or not. This should be a simple endpoint which returns a `200`, Like a `/version` endpoint or an empty `/healthz` endpoint.
+
+## CI
+
+- The CI should be running the tests from within a container against the compose stack. In this example, the CI builds an image with the test target set, runs the tests and, if successful, builds and pushes a production image to Habour.
+- This can then be pulled in the compose file and used with the compose stack by using the Harbor URL instead of the dockerfile.
