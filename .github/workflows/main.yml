@@ -23,6 +23,9 @@ jobs:
       - name: Wait for container to fill DB and exit
         run: |
           sleep 150
+      # Output Docker networks
+      - name: List Docker Networks
+        run: docker network ls
 
       # Build and run tests
       - name: Build and Test
