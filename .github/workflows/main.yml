@@ -31,4 +31,4 @@ jobs:
       - name: Build and Test
         run: |
           docker build --target test -t my-app:test .
-          docker run --network dockerBestPractices_default my-app:test
+          docker run --network dockerbestpractices_default my-app:test
