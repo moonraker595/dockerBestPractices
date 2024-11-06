@@ -1,5 +1,7 @@
 # :whale: Docker: best practices for application development 
 
+[![CI](https://github.com/moonraker595/dockerBestPractices/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/moonraker595/dockerBestPractices/actions/workflows/main.yml)
+
 This document provides best practices for developing applications targeted for deployment in a Kubernetes (K8s) environment.
 
 Kubernetes introduces specific requirements and considerations for application architecture, particularly in containerisation, configuration management, logging, monitoring, and security. These guidelines aim to streamline the development process, improve scalability, and reduce deployment issues.
@@ -89,7 +91,8 @@ should return something like:
 
 - K8s will need an endpoint to poll in order to determine whether the application is up or not. This should be a simple endpoint which returns a `200`, Like a `/version` endpoint or an empty `/healthz` endpoint.
 
-## CI
+## CI Tests
 
 - The CI should be running the tests from within a container against the compose stack. In this example, the CI builds an image with the test target set, runs the tests and, if successful, builds and pushes a production image to Habour.
-- This can then be pulled in the compose file and used with the compose stack by using the Harbor URL instead of the dockerfile.
+- This can then be pulled in the compose file and used with the compose stack by using the Harbor URL instead of the dockerfile. This will allow other services to use this application in their docker compose file without having to pull the code.
+- In the example compose file, a build target can be specified or the image to pull from harbor, not both

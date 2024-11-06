@@ -1,9 +1,11 @@
 services:
 
+# targets: test or production
   fastapi-app:
     container_name: fastapi-app
-    build:
-      target: production
+   # build:
+   #   target: production
+    image: harbor.stfc.ac.uk/dseg/api:main #will pull the prod image from harbor instead of building it from local code
     depends_on:
       icat_mariadb:
         condition: service_healthy
