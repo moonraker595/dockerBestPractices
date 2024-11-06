@@ -6,9 +6,9 @@ on:
       - main  # or specify your deployment branch
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
 
+  Test:
+    runs-on: ubuntu-latest
     steps:
       # Checkout code
       - name: Checkout code
@@ -23,6 +23,7 @@ jobs:
       - name: Wait for container to fill DB and exit
         run: |
           sleep 150
+
       # Output Docker networks
       - name: List Docker Networks
         run: docker network ls
@@ -32,3 +33,25 @@ jobs:
         run: |
           docker build --target test -t my-app:test .
           docker run --network dockerbestpractices_default my-app:test
+
+  Push-to-Harbor:
+    needs: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.HARBOR_URL }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push the Upload API Docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          target: production
+          # Push to harbor using the branch name as tag.
+          tags: ${{ secrets.HARBOR_URL }}/api:${{ github.ref_name }}
